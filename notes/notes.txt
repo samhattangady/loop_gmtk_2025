@@ -1,0 +1,3 @@
+31 Jul 2025:
+loop. lets see. first setup with current_zig and then take it
+one step at a time.

@@ -1,0 +1,11 @@
+.{
+    .name = .loop_gmtk_2025,
+    .version = "0.0.1",
+    .fingerprint = 0xc4da5bb3ef1b3f14,
+    .minimum_zig_version = "0.14.0",
+    .dependencies = .{
+    },
+    .paths = .{
+        "src/",
+    },
+}
