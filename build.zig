@@ -11,6 +11,7 @@ fn jam_game_builder(b: *std.Build) void {
     var options = b.addOptions();
     const builder_mode = b.option(bool, "builder", "Build project with developer tools") orelse true;
     options.addOption(bool, "builder_mode", builder_mode);
+    options.addOption(bool, "hotreload", true);
     const exe = b.addExecutable(.{
         .name = "haathi",
         .root_source_file = b.path("src/main.zig"),

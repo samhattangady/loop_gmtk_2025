@@ -7,6 +7,7 @@ const helpers = @import("helpers.zig");
 
 var haathi: Haathi = undefined;
 var game: Game = undefined;
+const renderGame = @import("render.zig").renderGame;
 var start_ticks: u64 = 0;
 const BUILDER_MODE = build_options.builder_mode;
 
@@ -40,11 +41,16 @@ export fn mouseWheelY(y: c_int) void {
 
 export fn update() void {}
 
+export fn hotreload() c_int {
+    if (build_options.hotreload) return 1;
+    return 0;
+}
+
 export fn render() void {
     const ticks = helpers.milliTimestamp() - start_ticks;
     haathi.update(ticks);
     game.update(ticks);
-    game.render();
+    renderGame(&game);
     haathi.render();
     // TODO (23 Jul 2024 sam): THis should be handled in game.update. not external like this...
     if (BUILDER_MODE) {

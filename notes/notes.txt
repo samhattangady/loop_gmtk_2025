@@ -1,3 +1,59 @@
 31 Jul 2025:
 loop. lets see. first setup with current_zig and then take it
-one step at a time.
+one step at a time. done. now we want to set up the loop.
+
+TODO: turn off the autoreloads.
+
+okay how do we want to do this? I think we need the theme first. we had some
+idea of a snake. but we could also do something like ants. basically we want
+some kind of a loop that we can drag around, and we need to thing whether the
+guys will follow the line, or lag. I think lag is better. but first we need to
+create the draggable loop. lets give it 100 segments, and think how we want to
+do the "physics". Either we handle it on our own with some kind of fabrik
+thing or we use some hind of physics library. 
+
+I mean lets do the first one?
+
+So for fabrik, we need something like a chain. and we are going to be doing
+points. so on need for segment I kihn.
+
+cool. Lets say that we want a 5 min hiscore game.
+- larger track
+- faster movers
+- more movers
+- movers can carry more
+
+then the pickups keep moving around the screen, so you have to readjust your
+tracks to pick them up. 
+so what is another hectic thing. If we are going hectic, then ants and all
+dont make as much sense.
+
+- cleanup? I still like the sorcerecs apprentice kinda thing. 
+- collection of some kind
+    what would we be collecting? what is hectic to collect? black friday?
+    fruit harvest of some sort? 
+- defense / firefighting
+    i kinda like this. imagine the broomsticks carrying buckets.
+    what is the "fuel" here? 
+
+so we could do a mix of the two then? so basic thing is water to field. then
+once things grow, field to shop. then if there is a fire, then that needs to
+be put out. so then you have to keep moving around the things and trying to
+fix problems. that works 
+
+so for today, pick up, dropoff, growth.
+
+how do we do growth? I think we always want to add 4 points and in the gaps.
+
+---
+
+01 Aug 2025:
+now we have to plan and see how much it is that we want to do with that thing.
+So right now we have very little. I think we start off by getting the art work
+in.
+
+okay we need a plan. so we had the idat in mind I think. So now it is just a
+matter of executing on the thing. start off with "unlocking" the next step. so
+zone has to count how many were deliverd.
+
+

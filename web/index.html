@@ -33,6 +33,7 @@
       document.addEventListener('mouseup', e => instance.exports.mouseUp(e.button));
       document.addEventListener('mousemove', e => instance.exports.mouseMove(e.x, canvas.height-e.y));
       document.addEventListener('wheel', e => instance.exports.mouseWheelY(e.deltaY));
+      let hotreload = instance.exports.hotreload() == 1;
 
       function render() {
         window.requestAnimationFrame(render);

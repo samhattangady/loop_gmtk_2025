@@ -479,6 +479,7 @@ pub const Rect = struct {
 pub const Button = struct {
     const Self = @This();
     rect: Rect,
+    // to be converted to an enum?
     value: u8,
     text: []const u8,
     text2: []const u8 = "",
@@ -580,6 +581,11 @@ pub fn debugPrintAlloc(allocator: std.mem.Allocator, comptime fmt: []const u8, a
         return;
     };
     c.debugPrint(message.ptr);
+}
+
+pub fn unlerp(start: f32, end: f32, val: f32) f32 {
+    if (start == end) return 0;
+    return (val - start) / (end - start);
 }
 
 /// Checks if a ray in +ve x direction from point intersects with line v0-v1
@@ -802,6 +808,23 @@ pub fn webLoad(key: []const u8, allocator: std.mem.Allocator) ?[]const u8 {
     const data = allocator.alloc(u8, data_len) catch unreachable;
     c.webLoad(key.ptr, key.len, data.ptr, data_len);
     return data;
+}
+
+// returns num/den as float
+pub fn fraction(num: anytype, den: anytype) f32 {
+    if (den == 0) return 0;
+    return @as(f32, @floatFromInt(num)) / @as(f32, @floatFromInt(den));
+}
+
+pub fn asf32(int: anytype) f32 {
+    return @as(f32, @floatFromInt(int));
+}
+
+pub fn optEqual(val: anytype, eq: anytype) bool {
+    if (val == null) return false;
+    if (@typeInfo(@TypeOf(val.?)) != .@"struct") return val.? == eq;
+    if (@hasDecl(@TypeOf(val.?), "equal")) return val.?.equal(eq);
+    return val.? == eq;
 }
 
 /// ConstKey is a useful key that can be used for the ConstIndexArray
