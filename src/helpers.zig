@@ -964,3 +964,18 @@ pub fn ConstIndexArray(comptime Key: type, comptime T: type) type {
         }
     };
 }
+
+pub fn stringIn(s1: []const u8, list: []const []const u8) bool {
+    for (list) |s2| {
+        if (stringEqual(s1, s2)) return true;
+    }
+    return false;
+}
+
+pub fn stringEqual(s1: []const u8, s2: []const u8) bool {
+    if (s1.len != s2.len) return false;
+    for (s1, s2) |c1, c2| {
+        if (c1 != c2) return false;
+    }
+    return true;
+}

@@ -154,6 +154,34 @@ pub const Material = enum {
     }
 };
 
+pub const Broken = enum {
+    on_fire,
+    blocked_by_birds,
+    swarmed_by_dogs,
+    hidden_by_flour_curse,
+    hidden_by_bread_curse,
+    hidden_by_gold_curse,
+
+    pub fn materialToFix(self: *const Broken) Material {
+        return switch (self.*) {
+            .on_fire => .water,
+            .blocked_by_birds => .wheat,
+            .swarmed_by_dogs => .bread,
+            .hidden_by_flour_curse => .flour,
+            .hidden_by_bread_curse => .bread,
+            .hidden_by_gold_curse => .gold,
+        };
+    }
+};
+
+pub const Event = struct {
+    zone: usize,
+    broken: Broken,
+    mat_count: u32,
+    triggered: bool = false,
+    hide_vault: bool = false,
+};
+
 pub const Zone = struct {
     name: []const u8,
     rect: Rect,
@@ -165,14 +193,30 @@ pub const Zone = struct {
     show_count: bool = false,
     linked: ?usize = null,
     hidden: bool = true,
+    broken: ?Broken = null,
+    broke_count: u32 = 0,
 
     fn deliver(self: *Zone, mat: Material, game: *Game) bool {
         if (self.hidden) return false;
+        if (self.broken) |br| {
+            if (br.materialToFix() == mat) {
+                if (self.broke_count > 0) self.broke_count -= 1;
+                if (self.broke_count == 0) {
+                    self.broken = null;
+                    game.event_timer = 1;
+                    if (game.zones.items[9].hidden) self.hidden = true;
+                    game.zones.items[9].hidden = false;
+                }
+            } else {
+                // ruin the material add to count etc
+            }
+            return false;
+        }
         if (mat == self.material) {
             self.count += 1;
             if (self.linked) |next| {
                 const other = &game.zones.items[next];
-                other.available += 1;
+                if (other.isProducing()) other.available += 1;
             }
             return true;
         } else {
@@ -183,6 +227,7 @@ pub const Zone = struct {
 
     fn pickup(self: *Zone, game: *Game) ?Material {
         if (self.hidden) return null;
+        if (!self.isProducing()) return null;
         if (self.available > 0) {
             self.count += 1;
             self.available -= 1;
@@ -191,6 +236,18 @@ pub const Zone = struct {
         // TODO (01 Aug 2025 sam): tell game that this was empty
         _ = game;
         return null;
+    }
+
+    fn isProducing(self: *const Zone) bool {
+        return self.broken == null;
+    }
+
+    fn setBroken(self: *Zone, broken: Broken, count: u32) void {
+        helpers.debugPrint("{s} is set to {s}. count={d}", .{ self.name, @tagName(broken), count });
+        self.broken = broken;
+        self.hidden = false;
+        self.available = 0;
+        self.broke_count = count;
     }
 };
 
@@ -220,7 +277,6 @@ pub const Game = struct {
     haathi: *Haathi,
     ticks: u32 = 0,
     steps: u32 = 0,
-    score: u32 = 0,
     world: World,
     ff_mode: bool = false,
     points: std.ArrayList(Point),
@@ -228,12 +284,17 @@ pub const Game = struct {
     buttons: std.ArrayList(Button),
     zones: std.ArrayList(Zone),
     quests: std.ArrayList(Quest),
-    hovered_point: ?usize = null,
+    events: std.ArrayList(Event),
+    score: u32 = 0,
+    prev_gold: u32 = 0,
+    event_timer: u32 = 0,
+    event_index: u32 = 0,
     point_spacing: f32 = 0,
-    hovered_offset: Vec2 = .{},
-    hovered_position: Vec2 = .{},
     move_fraction: f32 = 1,
     anim_progress: f32 = 1.0 / 7.0,
+    hovered_point: ?usize = null,
+    hovered_offset: Vec2 = .{},
+    hovered_position: Vec2 = .{},
 
     xosh: std.Random.Xoshiro256,
     rng: std.Random = undefined,
@@ -246,9 +307,15 @@ pub const Game = struct {
     const MAJOR_AXIS = 100;
 
     pub const serialize_fields = [_][]const u8{
-        "ticks",
-        "steps",
-        "world",
+        "points",
+        "movers",
+        "zones",
+        "quests",
+        "buttons",
+        "score",
+        "point_spacing",
+        "move_fraction",
+        "anim_progress",
     };
 
     pub fn init(haathi: *Haathi) Game {
@@ -266,6 +333,7 @@ pub const Game = struct {
             .quests = .init(haathi.allocator),
             .movers = .init(haathi.allocator),
             .buttons = .init(haathi.allocator),
+            .events = .init(haathi.allocator),
             .world = world,
             .allocator = allocator,
             .arena_handle = arena_handle,
@@ -279,6 +347,7 @@ pub const Game = struct {
         self.world.deinit();
         self.zones.deinit();
         self.buttons.deinit();
+        self.events.deinit();
         self.points.deinit();
         self.movers.deinit();
         self.quests.deinit();
@@ -291,6 +360,7 @@ pub const Game = struct {
         self.points.clearRetainingCapacity();
         self.movers.clearRetainingCapacity();
         self.quests.clearRetainingCapacity();
+        self.events.clearRetainingCapacity();
         self.move_fraction = 0.003;
         self.anim_progress = 1.0 / 7.0;
         self.score = 0;
@@ -419,13 +489,23 @@ pub const Game = struct {
             .show_count = true,
             .material = .gold,
         }) catch unreachable;
+        self.zones.append(.{
+            .name = "your_vault",
+            .rect = .{
+                .position = .{ .x = 250 + ZONE_WIDTH + 10, .y = WORLD_SIZE.y - ZONE_HEIGHT - 50 - ZONE_HEIGHT },
+                .size = .{ .x = ZONE_WIDTH - 30, .y = ZONE_HEIGHT },
+            },
+            .is_consumer = true,
+            .show_count = true,
+            .material = .gold,
+        }) catch unreachable;
         self.buttons.append(.{
             .rect = .{
                 .position = .{ .x = WORLD_X - 250, .y = 20 },
                 .size = .{ .x = 200, .y = 36 },
             },
             .value = @intFromEnum(ButtonAction.loop_size_increase),
-            .text = @tagName(ButtonAction.loop_size_increase),
+            .text = "Increase Loop Size",
         }) catch unreachable;
         self.buttons.append(.{
             .rect = .{
@@ -433,7 +513,7 @@ pub const Game = struct {
                 .size = .{ .x = 200, .y = 36 },
             },
             .value = @intFromEnum(ButtonAction.worker_add),
-            .text = @tagName(ButtonAction.worker_add),
+            .text = "Summon Broomsticks",
         }) catch unreachable;
         self.buttons.append(.{
             .rect = .{
@@ -441,7 +521,7 @@ pub const Game = struct {
                 .size = .{ .x = 200, .y = 36 },
             },
             .value = @intFromEnum(ButtonAction.worker_speed_increase),
-            .text = @tagName(ButtonAction.worker_speed_increase),
+            .text = "Increase Broomstick Speed",
         }) catch unreachable;
         //
         // quests_init
@@ -528,6 +608,31 @@ pub const Game = struct {
                 .enabled = false,
             },
         }) catch unreachable;
+        //
+        // events_setup
+        //
+        self.events.append(.{
+            .zone = 5,
+            .broken = .on_fire,
+            .mat_count = 10,
+        }) catch unreachable;
+        self.events.append(.{
+            .zone = 10,
+            .broken = .hidden_by_bread_curse,
+            .hide_vault = true,
+            .mat_count = 10,
+        }) catch unreachable;
+        self.events.append(.{
+            .zone = 7,
+            .broken = .on_fire,
+            .mat_count = 10,
+        }) catch unreachable;
+        self.events.append(.{
+            .zone = 10,
+            .broken = .hidden_by_gold_curse,
+            .hide_vault = true,
+            .mat_count = 10,
+        }) catch unreachable;
     }
 
     pub fn getPos(self: *const Game, f: f32) Vec2 {
@@ -551,6 +656,7 @@ pub const Game = struct {
     }
 
     pub fn loadGame(self: *Game) void {
+        self.reset();
         if (helpers.webLoad("save", self.haathi.arena)) |savefile| {
             const tree = std.json.parseFromSlice(std.json.Value, self.haathi.arena, savefile, .{}) catch |err| {
                 helpers.debugPrint("parsing error {}\n", .{err});
@@ -723,6 +829,13 @@ pub const Game = struct {
         _ = self.arena_handle.reset(.retain_capacity);
         self.arena = self.arena_handle.allocator();
         self.ticks = @intCast(ticks);
+        if (self.event_timer > 0) self.event_timer += 1;
+        if (self.haathi.inputs.getKey(.s).is_clicked and self.haathi.inputs.getKey(.shift).is_down) {
+            self.saveGame();
+        }
+        if (self.haathi.inputs.getKey(.l).is_clicked and self.haathi.inputs.getKey(.shift).is_down) {
+            self.loadGame();
+        }
         if (!self.haathi.inputs.mouse.l_button.is_down) {
             self.hovered_point = null;
             for (self.points.items, 0..) |*point, i| {
@@ -734,6 +847,7 @@ pub const Game = struct {
                 }
             }
         }
+        self.prev_gold = self.zones.items[9].count;
         if (self.hovered_point) |pt_i| {
             if (self.haathi.inputs.mouse.l_button.is_down) {
                 const target = self.haathi.inputs.mouse.current_pos.add(self.hovered_offset);
@@ -799,6 +913,20 @@ pub const Game = struct {
             quest.button.enabled = quest.completed and !quest.claimed;
             quest.button.update(self.haathi.inputs.mouse);
             if (quest.button.clicked) self.doAction(@enumFromInt(quest.button.value), quest.button.index);
+        }
+        if (self.event_timer == 0 and self.event_index == 0) {
+            const current_gold = self.zones.items[9].count;
+            if (current_gold > 15) self.event_timer = 301;
+        }
+        if (self.event_timer > 300) {
+            self.event_timer = 0;
+            helpers.debugPrint("event_index = {d}", .{self.event_index});
+            const event = &self.events.items[self.event_index];
+            helpers.debugPrint("zone_index = {d} of {d}", .{ event.zone, self.zones.items.len });
+            event.triggered = true;
+            self.zones.items[event.zone].setBroken(event.broken, event.mat_count);
+            self.event_index += 1;
+            if (event.hide_vault) self.zones.items[9].hidden = true;
         }
     }
 };

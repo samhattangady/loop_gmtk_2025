@@ -54,11 +54,40 @@ pub fn renderGame(self: *Game) void {
             .size = zone.rect.size,
             .color = colors.solarized_base0.alpha(0.3),
         });
-        self.haathi.drawText(.{
-            .text = zone.name,
-            .position = zone.rect.center(),
-            .color = colors.solarized_base03.alpha(0.8),
-        });
+        if (zone.broken) |broken| {
+            if (self.steps % 60 > 30) {
+                self.haathi.drawRect(.{
+                    .position = zone.rect.position,
+                    .size = zone.rect.size,
+                    .color = colors.solarized_red,
+                });
+            }
+            {
+                const text = std.fmt.allocPrintZ(self.haathi.arena, "{s} is {s}", .{ zone.name, @tagName(broken) }) catch unreachable;
+                self.haathi.drawText(.{
+                    .text = text,
+                    .position = zone.rect.center().add(.{ .y = 0 }),
+                    .color = colors.solarized_base03.alpha(0.8),
+                });
+            }
+            {
+                const text = std.fmt.allocPrintZ(self.haathi.arena, "deliver {d} {s} to fix", .{ zone.broke_count, @tagName(broken.materialToFix()) }) catch unreachable;
+                self.haathi.drawText(.{
+                    .text = text,
+                    .position = zone.rect.center().add(.{ .y = -25 }),
+                    .color = colors.solarized_base03.alpha(0.8),
+                });
+            }
+            continue;
+        }
+        {
+            const text = std.fmt.allocPrintZ(self.haathi.arena, "{s}", .{zone.name}) catch unreachable;
+            self.haathi.drawText(.{
+                .text = text,
+                .position = zone.rect.center(),
+                .color = colors.solarized_base03.alpha(0.8),
+            });
+        }
         if (!zone.is_consumer and zone.available < 100000) {
             const text = std.fmt.allocPrintZ(self.haathi.arena, "{d} {s}", .{ zone.available, @tagName(zone.material) }) catch unreachable;
             self.haathi.drawText(.{
@@ -87,6 +116,7 @@ pub fn renderGame(self: *Game) void {
     const arrow_point = 3;
     const arrow_len = 12;
     for (self.buttons.items) |btn| {
+        if (!btn.enabled) continue;
         const alpha: f32 = if (btn.hovered or !btn.enabled) 0.4 else 1.0;
         const color = colors.solarized_base03.alpha(alpha);
         self.haathi.drawRect(.{
@@ -96,17 +126,11 @@ pub fn renderGame(self: *Game) void {
             .radius = 5,
         });
         const text_alpha: f32 = if (!btn.enabled) 0.4 else 1.0;
+        const text = std.fmt.allocPrintZ(self.haathi.arena, "{s}", .{btn.text}) catch unreachable;
         self.haathi.drawText(.{
             .position = btn.rect.center().add(.{ .y = -8 }),
-            .text = btn.text,
-            .color = bg_color.alpha(text_alpha),
-            .style = FONTS[1],
-        });
-        const text = std.fmt.allocPrintZ(self.haathi.arena, "{d}", .{btn.index}) catch unreachable;
-        self.haathi.drawText(.{
-            .position = btn.rect.center().add(.{ .x = btn.rect.size.x / 2 + 10, .y = -8 }),
             .text = text,
-            .color = colors.solarized_base03,
+            .color = bg_color.alpha(text_alpha),
             .style = FONTS[1],
         });
     }
@@ -142,10 +166,11 @@ pub fn renderGame(self: *Game) void {
                 .color = color,
                 .radius = 5,
             });
+            const text = std.fmt.allocPrintZ(self.haathi.arena, "{s}", .{btn.text}) catch unreachable;
             const text_alpha: f32 = if (!btn.enabled) 0.4 else 1.0;
             self.haathi.drawText(.{
                 .position = btn.rect.center().add(.{ .y = -8 }),
-                .text = btn.text,
+                .text = text,
                 .color = bg_color.alpha(text_alpha),
                 .style = FONTS[1],
             });

@@ -56,4 +56,17 @@ okay we need a plan. so we had the idat in mind I think. So now it is just a
 matter of executing on the thing. start off with "unlocking" the next step. so
 zone has to count how many were deliverd.
 
+Cool. that is all done now. next we need to add in the events.
+so what are the different events that we have in mind? 
+fire, 
+scarecrow
+various requests, = bread (dog), gold (taxman)
+all the requests have to stop production  of some kind. otherwise it makes no
+sense. so we can have the same things. fire(which requires water), something
+that needs food, and something that needs gold. and maybe the food thing can
+be separate
+
+okay do fires first. so what should happen? a building gets set on fire. then
+it stops producing. so you have to put n water there. then its okay.
+
 
